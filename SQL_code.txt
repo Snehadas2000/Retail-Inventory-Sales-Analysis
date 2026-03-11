@@ -1,0 +1,55 @@
+ 1. Retrieve the top 5 categories by revenue for each region
+
+SELECT *
+FROM (
+    SELECT
+        Region,
+        Category,
+        SUM(Invoice_Value) AS revenue,
+        RANK() OVER (PARTITION BY Region ORDER BY SUM(Invoice_Value) DESC) r
+    FROM sales
+    GROUP BY Region, Category
+) t
+WHERE r <= 5;
+
+
+2. Calculate sell-through rate by store, ordered from highest to lowest
+
+SELECT
+    o.Store,
+    SUM(s.Qty) / SUM(o.Opening + sh.Shipments) * 100 AS sell_through
+FROM opening_stock o
+JOIN sales s USING(Store)
+JOIN shipments sh USING(Store)
+GROUP BY o.Store
+ORDER BY sell_through DESC;
+
+
+3. Identify products (attribute combinations) with opening stock > 100 units but zero sales
+
+SELECT o.Product_Code
+FROM opening_stock o
+LEFT JOIN sales s
+ON o.Product_Code = s.Product_Code
+GROUP BY o.Product_Code
+HAVING SUM(o.Opening) > 100
+AND COALESCE(SUM(s.Qty),0) = 0;
+
+
+4. Compare average shipment quantity vs average sales quantity by category
+
+SELECT
+    Category,
+    AVG(Transaction_Qty) AS avg_shipment,
+    AVG(Qty) AS avg_sales
+FROM shipments sh
+JOIN sales s USING(Category)
+GROUP BY Category;
+
+
+5. Find stores where closing stock exceeds 60% of (opening stock + shipments)
+
+SELECT
+    Store
+FROM stock
+WHERE Closing > 0.6 * (Opening + Shipments);
